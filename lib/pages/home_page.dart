@@ -1,7 +1,10 @@
 import 'package:cep_app/models/endereco_model.dart';
+import 'package:cep_app/pages/state_subclass/home_controller.dart';
+import 'package:cep_app/pages/state_subclass/home_state.dart';
 import 'package:cep_app/repositories/cep_repository.dart';
 import 'package:cep_app/repositories/cep_repository_impl.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -11,10 +14,7 @@ class HomePage extends StatefulWidget {
 }
 
 class _HomePageState extends State<HomePage> {
-  final CepRepository cepRepository = CepRepositoryImpl();
-  EnderecoModel? enderecoModel;
-  bool loading = false;
-
+  final homeController = HomeController();
   final formKey = GlobalKey<FormState>();
   final cepEC = TextEditingController();
 
@@ -26,62 +26,65 @@ class _HomePageState extends State<HomePage> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Buscar CEP'),
-      ),
-      body: SingleChildScrollView(
-          child: Form(
-        key: formKey,
-        child: Column(
-          children: [
-            TextFormField(
-              controller: cepEC,
-              validator: (value) {
-                if (value == null || value.isEmpty) {
-                  return 'CEP obrigatório';
-                }
-                return null;
-              },
-            ),
-            ElevatedButton(
-              onPressed: () async {
-                final valid = formKey.currentState?.validate() ?? false;
-
-                if (valid) {
-                  setState(() {
-                    loading = true;
-                  });
-
-                  try {
-                    final endereco = await cepRepository.getCep(cepEC.text);
-                    setState(() {
-                      loading = false;
-                      enderecoModel = endereco;
-                    });
-                  } catch (e) {
-                    setState(() {
-                      loading = false;
-                      enderecoModel = null;
-                    });
-
-                    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-                        content: Text('Erro ao buscar o endereço')));
-                  }
-                }
-              },
-              child: const Text('Buscar'),
-            ),
-            // Aqui eu posso usar o if ou Visibility
-            if (loading == true) const CircularProgressIndicator(),
-            Visibility(
-              visible: enderecoModel != null,
-              child: Text(
-                  '${enderecoModel?.logradouro} ${enderecoModel?.complemento} ${enderecoModel?.cep}'),
-            )
-          ],
+    return BlocListener<HomeController, HomeState>(
+      bloc: homeController,
+      listener: (context, state) {
+        if (state is HomeFailure) {
+          ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('Erro ao buscar o endereço')));
+        }
+      },
+      child: Scaffold(
+        appBar: AppBar(
+          title: const Text('Buscar CEP'),
         ),
-      )),
+        body: SingleChildScrollView(
+            child: Form(
+          key: formKey,
+          child: Column(
+            children: [
+              TextFormField(
+                controller: cepEC,
+                validator: (value) {
+                  if (value == null || value.isEmpty) {
+                    return 'CEP obrigatório';
+                  }
+                  return null;
+                },
+              ),
+              ElevatedButton(
+                onPressed: () async {
+                  final valid = formKey.currentState?.validate() ?? false;
+
+                  if (valid) {
+                    homeController.findCEP(cepEC.text);
+                  }
+                },
+                child: const Text('Buscar'),
+              ),
+              BlocBuilder<HomeController, HomeState>(
+                bloc: homeController,
+                builder: (context, state) {
+                  return Visibility(
+                    visible: state is HomeLoading,
+                    child: const CircularProgressIndicator(),
+                  );
+                },
+              ),
+              BlocBuilder<HomeController, HomeState>(
+                bloc: homeController,
+                builder: (context, state) {
+                  if (state is HomeLoaded) {
+                    return Text(
+                        '${state.enderecoModel.logradouro} ${state.enderecoModel.complemento} ${state.enderecoModel.cep}');
+                  }
+                  return const SizedBox.shrink();
+                },
+              )
+            ],
+          ),
+        )),
+      ),
     );
   }
 }
