@@ -1,17 +1,17 @@
-import 'package:cep_app/pages/state_subclass/home_controller.dart';
-import 'package:cep_app/pages/state_subclass/home_state.dart';
+import 'package:cep_app/pages/state_single_class/home_single_class_controller.dart';
+import 'package:cep_app/pages/state_single_class/home_state.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
-class HomePage extends StatefulWidget {
-  const HomePage({super.key});
+class HomeSinglePage extends StatefulWidget {
+  const HomeSinglePage({super.key});
 
   @override
-  State<HomePage> createState() => _HomePageState();
+  State<HomeSinglePage> createState() => _HomeSinglePageState();
 }
 
-class _HomePageState extends State<HomePage> {
-  final homeController = HomeController();
+class _HomeSinglePageState extends State<HomeSinglePage> {
+  final homeSingleClassController = HomeSingleClassController();
   final formKey = GlobalKey<FormState>();
   final cepEC = TextEditingController();
 
@@ -23,10 +23,10 @@ class _HomePageState extends State<HomePage> {
 
   @override
   Widget build(BuildContext context) {
-    return BlocListener<HomeController, HomeState>(
-      bloc: homeController,
+    return BlocListener<HomeSingleClassController, HomeState>(
+      bloc: homeSingleClassController,
       listener: (context, state) {
-        if (state is HomeFailure) {
+        if (state.status == HomeStatus.failure) {
           ScaffoldMessenger.of(context).showSnackBar(
               const SnackBar(content: Text('Erro ao buscar o endereço')));
         }
@@ -54,26 +54,27 @@ class _HomePageState extends State<HomePage> {
                   final valid = formKey.currentState?.validate() ?? false;
 
                   if (valid) {
-                    homeController.findCEP(cepEC.text);
+                    homeSingleClassController.findCEP(cepEC.text);
                   }
                 },
                 child: const Text('Buscar'),
               ),
-              BlocBuilder<HomeController, HomeState>(
-                bloc: homeController,
+              BlocBuilder<HomeSingleClassController, HomeState>(
+                bloc: homeSingleClassController,
                 builder: (context, state) {
                   return Visibility(
-                    visible: state is HomeLoading,
+                    visible: state.status == HomeStatus.loading,
                     child: const CircularProgressIndicator(),
                   );
                 },
               ),
-              BlocBuilder<HomeController, HomeState>(
-                bloc: homeController,
+              BlocBuilder<HomeSingleClassController, HomeState>(
+                bloc: homeSingleClassController,
                 builder: (context, state) {
-                  if (state is HomeLoaded) {
+                  if (state.status == HomeStatus.loaded) {
                     return Text(
-                        '${state.enderecoModel.logradouro} ${state.enderecoModel.complemento} ${state.enderecoModel.cep}');
+                      '${state.enderecoModel?.logradouro} ${state.enderecoModel?.complemento} ${state.enderecoModel?.cep}',
+                    );
                   }
                   return const SizedBox.shrink();
                 },
